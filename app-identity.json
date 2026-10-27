@@ -1,0 +1,7 @@
+{
+  "name": "Mobile App Starter",
+  "slug": "mobile-app-starter",
+  "scheme": "mobileappstarter",
+  "iosBundleId": "com.example.mobileappstarter",
+  "androidPackage": "com.example.mobileappstarter"
+}
