@@ -1,0 +1,23 @@
+# Managed by skills.ps1 - what this project uses from the library (type  kit/name)
+skill  mattpocock/codebase-design
+skill  mattpocock/domain-modeling
+skill  mattpocock/git-guardrails-claude-code
+skill  mattpocock/grill-with-docs
+skill  mattpocock/handoff
+skill  mattpocock/improve-codebase-architecture
+skill  mattpocock/setup-matt-pocock-skills
+skill  mattpocock/setup-pre-commit
+skill  superpowers/brainstorming
+skill  superpowers/executing-plans
+skill  superpowers/finishing-a-development-branch
+skill  superpowers/receiving-code-review
+skill  superpowers/requesting-code-review
+skill  superpowers/subagent-driven-development
+skill  superpowers/systematic-debugging
+skill  superpowers/test-driven-development
+skill  superpowers/using-git-worktrees
+skill  superpowers/using-superpowers
+skill  superpowers/verification-before-completion
+skill  superpowers/writing-plans
+skill  ui-ux-pro-max/design-system
+skill  ui-ux-pro-max/ui-ux-pro-max
