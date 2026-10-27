@@ -30,6 +30,6 @@ it.each([
 
 it('light and dark have the same shape', () => {
   expect(Object.keys(darkTheme.colors).sort()).toEqual(Object.keys(lightTheme.colors).sort());
-  expect(lightTheme.minTapTarget).toBe(44);
-  expect(darkTheme.minTapTarget).toBe(44);
+  expect(lightTheme.minTapTarget).toBeGreaterThanOrEqual(44);
+  expect(darkTheme.minTapTarget).toBe(lightTheme.minTapTarget);
 });

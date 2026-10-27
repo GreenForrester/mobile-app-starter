@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { fontFamilies } from './fonts';
 
 // The one Theme every screen takes its look from (ADR 0002). A Derived App gets its
@@ -28,7 +30,8 @@ const shared = {
   textSizes: { small: 14, body: 16, heading: 20, title: 28 },
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
   radius: { sm: 6, md: 10 },
-  minTapTarget: 44,
+  // 44pt is Apple's minimum tap target; Android's is 48dp.
+  minTapTarget: Platform.OS === 'android' ? 48 : 44,
 };
 
 export const lightTheme: Theme = {
