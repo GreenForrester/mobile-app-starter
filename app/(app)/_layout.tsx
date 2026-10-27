@@ -32,6 +32,19 @@ export default function AppLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: 'Account',
+          tabBarIcon: ({ size, focused }) => (
+            <Ionicons
+              name={focused ? 'person-circle' : 'person-circle-outline'}
+              color={focused ? theme.colors.link : theme.colors.textMuted}
+              size={size}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
