@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
+import type { ComponentType } from 'react';
 
 import { AuthProvider, type EnabledSignInMethods, type ProviderSignIn } from '@/auth/AuthProvider';
 import { DEMO_ACCOUNTS, type DemoAccounts } from '@/auth/fake/demo-accounts';
@@ -18,6 +19,8 @@ export async function renderApp(
     signInMethods?: Partial<EnabledSignInMethods>;
     demoAccounts?: DemoAccounts | null;
     initialUrl?: string;
+    // Extra routes added beside the real ones, keyed like app/ paths, e.g. '(app)/details'.
+    routes?: Record<string, ComponentType>;
   } = {},
 ) {
   const backend = options.backend ?? createTestBackend();
@@ -36,7 +39,7 @@ export async function renderApp(
   }
 
   const rendered = await renderRouter(
-    { appDir: 'app', overrides: { _layout: TestRootLayout } },
+    { appDir: 'app', overrides: { ...options.routes, _layout: TestRootLayout } },
     { initialUrl: options.initialUrl ?? '/' },
   );
   // Wait for the session to be restored and the first screen to appear.

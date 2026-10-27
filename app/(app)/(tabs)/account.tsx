@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { MESSAGES } from '@/auth/messages';
+import { MESSAGES, problemMessage } from '@/auth/messages';
 import { ReauthPrompt } from '@/features/account/ReauthPrompt';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AppText } from '@/ui/AppText';
@@ -23,7 +23,7 @@ export default function AccountScreen() {
     setFormError(null);
     const result = await deleteAccount();
     if (result.status === 'recent-sign-in-required') setStep('reauthenticate');
-    else if (result.status === 'unreachable') setFormError(MESSAGES.unreachable);
+    else setFormError(problemMessage(result));
     // deleted: the navigator switches to Sign-in.
   }
 

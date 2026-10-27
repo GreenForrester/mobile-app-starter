@@ -11,9 +11,20 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
+// The identifier is both the iOS bundle ID and the Android package name, so it has to pass
+// both of Expo's checks: Android's segment rules, and iOS's ban on underscores.
+const ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/;
 const ID_MESSAGE =
-  'Identifier must look like com.yourname.app: at least two parts separated by dots, each starting with a letter and using only letters, numbers and underscores.';
+  'Identifier must look like com.yourname.app: at least two parts separated by dots, each starting with a letter and using only letters and numbers.';
+// Java keywords and literals, which Android package names can't contain (same list as Expo's).
+const RESERVED_SEGMENTS = new Set(
+  (
+    'abstract assert boolean break byte case catch char class const continue default do double else enum ' +
+    'extends final finally float for goto if implements import instanceof int interface long native new ' +
+    'package private protected public return short static strictfp super switch synchronized this throw ' +
+    'throws transient try void volatile while true false null'
+  ).split(' '),
+);
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // Never copied into a Derived App: build output, the Starter's own planning and issues,
@@ -40,6 +51,8 @@ function deriveIdentity({ name, id, slug }) {
   const appName = String(name ?? '').trim();
   if (!appName) throw new Error('Pass the app name with --name.');
   if (!ID_PATTERN.test(String(id ?? ''))) throw new Error(ID_MESSAGE);
+  const reserved = id.split('.').find((segment) => RESERVED_SEGMENTS.has(segment));
+  if (reserved) throw new Error(`"${reserved}" is a reserved word in Android package names; choose another identifier.`);
 
   const appSlug =
     slug ??
@@ -49,6 +62,10 @@ function deriveIdentity({ name, id, slug }) {
       .replace(/^-+|-+$/g, '');
   if (!appSlug) throw new Error("Couldn't make a slug from that name; pass --slug.");
   if (!SLUG_PATTERN.test(appSlug)) throw new Error('Slug must use lowercase letters, numbers and dashes.');
+  // The URL scheme is the slug without dashes, and a scheme has to start with a letter.
+  if (!/^[a-z]/.test(appSlug)) {
+    throw new Error('The URL scheme must start with a letter; pass --slug (for example --slug seven-minute-workout).');
+  }
 
   return { name: appName, slug: appSlug, scheme: appSlug.replace(/-/g, ''), iosBundleId: id, androidPackage: id };
 }
@@ -163,6 +180,14 @@ function readme(identity) {
     'npm test',
     'npm run typecheck',
     '```',
+    '',
+    'Before calling a change done on a device, work through `docs/hand-check.md` on Android.',
+    '',
+    '## Build on it',
+    '',
+    '[`docs/building-on-the-starter.md`](docs/building-on-the-starter.md) covers the demo Accounts, switching on',
+    'Google or Apple, plugging in a real Auth Backend, applying a Reference Design, adding screens, and what',
+    'is still unproven.',
     '',
     'The decisions this app inherited are in `docs/adr/`, and its vocabulary is in `GLOSSARY.md`.',
     '',

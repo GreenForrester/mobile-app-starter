@@ -2,7 +2,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { useColorScheme } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { MESSAGES } from '@/auth/messages';
+import { problemMessage } from '@/auth/messages';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button } from '@/ui/Button';
 
@@ -15,8 +15,8 @@ export function ProviderButtons({ onError }: { onError: (message: string | null)
 
   async function signIn(provider: 'google' | 'apple') {
     onError(null);
-    const result = await signInWithProvider(provider);
-    if (result.status === 'unreachable') onError(MESSAGES.unreachable);
+    const problem = problemMessage(await signInWithProvider(provider));
+    if (problem) onError(problem);
   }
 
   return (

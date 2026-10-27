@@ -21,6 +21,10 @@ beforeEach(() => {
 
 const pressButton = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 async function openAccount(email = plain.email, providers = stubProviders()) {
   const app = await renderApp({ backend, providers, initialUrl: '/account' });
   await screen.findByText(`Signed in as ${email}`);
@@ -87,6 +91,7 @@ describe('signed in as the demo Account', () => {
   });
 
   it('says the server could not be reached and stays on the Account Screen', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {}); // the dev log of the throw
     jest.spyOn(backend, 'deleteAccount').mockRejectedValue(new Error('offline'));
     const app = await openAccount();
     await confirmDeletion();
@@ -103,4 +108,20 @@ it('asks a Google Account to continue with Google instead of a password', async 
   expect(await screen.findByText(MESSAGES.recentSignInRequired)).toBeVisible();
   expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeOnTheScreen();
   expect(screen.queryByLabelText('Password')).toBeNull();
+});
+
+it('asks the 2FA Account for its code again before deleting it', async () => {
+  const { secondFactor } = DEMO_ACCOUNTS;
+  const first = await backend.signInWithPassword(secondFactor.email, secondFactor.password);
+  if (first.status !== 'second-factor-required') throw new Error(`got ${first.status}`);
+  await backend.submitSecondFactor(first.challengeId, secondFactor.code);
+  clock += RECENT_SIGN_IN_WINDOW_MS + 1;
+
+  const app = await openAccount(secondFactor.email);
+  await confirmDeletion();
+  await fireEvent.changeText(await screen.findByLabelText('Password'), secondFactor.password);
+  await pressButton('Confirm');
+  await fireEvent.changeText(await screen.findByLabelText('Code'), secondFactor.code);
+  await pressButton('Verify');
+  await waitFor(() => expect(app.getPathname()).toBe('/sign-in'));
 });

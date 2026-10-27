@@ -3,20 +3,24 @@ import { useState } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { MESSAGES } from '@/auth/messages';
+import { MESSAGES, problemMessage } from '@/auth/messages';
 import type { SignInMethod } from '@/auth/types';
 import { validateRequired } from '@/auth/validation';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button } from '@/ui/Button';
 import { FormMessage } from '@/ui/FormMessage';
 import { TextField } from '@/ui/TextField';
+import { useSubmit } from '@/ui/useSubmit';
 
-// Asks a signed-in person to prove who they are again, the same way they signed in.
+// Asks a signed-in person to prove who they are again, the same way they signed in,
+// including their Second Factor when the Auth Backend asks for it.
 export function ReauthPrompt({ method, onConfirmed }: { method: SignInMethod; onConfirmed: () => Promise<void> }) {
-  const { reauthenticate } = useAuth();
+  const { reauthenticate, submitSecondFactor } = useAuth();
   const theme = useTheme();
   const scheme = useColorScheme();
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -25,24 +29,50 @@ export function ReauthPrompt({ method, onConfirmed }: { method: SignInMethod; on
     setFormError(null);
     const result = await reauthenticate(proof);
     if (result.status === 'signed-in') await onConfirmed();
+    else if (result.status === 'second-factor-required') setChallengeId(result.challengeId);
     else if (result.status === 'wrong-credentials') setFieldError(MESSAGES.wrongCredentials);
-    else if (result.status === 'unreachable') setFormError(MESSAGES.unreachable);
+    else setFormError(problemMessage(result));
     // cancelled: the person closed the Google or Apple sheet; nothing to say.
   }
 
-  async function confirmPassword() {
+  const passwordStep = useSubmit(async () => {
     const missing = validateRequired(password, MESSAGES.passwordRequired);
     if (missing) {
       setFieldError(missing);
       return;
     }
     await confirm({ kind: 'password', password });
-  }
+  });
+
+  const codeStep = useSubmit(async () => {
+    const missing = validateRequired(code, MESSAGES.codeRequired);
+    setFieldError(missing);
+    setFormError(null);
+    if (missing || !challengeId) return;
+    const result = await submitSecondFactor(challengeId, code);
+    if (result.status === 'signed-in') await onConfirmed();
+    else if (result.status === 'wrong-code') setFieldError(MESSAGES.wrongCode);
+    else setFormError(problemMessage(result));
+  });
 
   return (
     <>
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
-      {method === 'password' ? (
+      {challengeId ? (
+        <>
+          <TextField
+            label="Code"
+            value={code}
+            onChangeText={setCode}
+            error={fieldError}
+            keyboardType="number-pad"
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
+            onSubmitEditing={() => void codeStep.submit()}
+          />
+          <Button title="Verify" onPress={codeStep.submit} busy={codeStep.busy} />
+        </>
+      ) : method === 'password' ? (
         <>
           <TextField
             label="Password"
@@ -52,9 +82,9 @@ export function ReauthPrompt({ method, onConfirmed }: { method: SignInMethod; on
             secureTextEntry
             autoComplete="current-password"
             textContentType="password"
-            onSubmitEditing={() => void confirmPassword()}
+            onSubmitEditing={() => void passwordStep.submit()}
           />
-          <Button title="Confirm" onPress={confirmPassword} />
+          <Button title="Confirm" onPress={passwordStep.submit} busy={passwordStep.busy} />
         </>
       ) : method === 'apple' ? (
         <AppleAuthentication.AppleAuthenticationButton

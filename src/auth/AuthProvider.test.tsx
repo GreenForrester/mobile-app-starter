@@ -10,6 +10,15 @@ import type { AuthBackend, ProviderIdentity, Session } from './types';
 const { plain, secondFactor } = DEMO_ACCOUNTS;
 const googleIdentity: ProviderIdentity = { provider: 'google', subject: 'g-1', idToken: 't', email: 'g@example.com' };
 
+// Backend failures are logged in development; keep that out of the test output.
+let warn: jest.SpyInstance;
+beforeEach(() => {
+  warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 async function renderAuth(backend: AuthBackend, providers = stubProviders()) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <AuthProvider
@@ -82,6 +91,37 @@ describe('Password Sign-in', () => {
   });
 });
 
+describe('what reaches the backend', () => {
+  it('trims emails and codes before calling the backend', async () => {
+    const backend = createTestBackend();
+    const signIn = jest.spyOn(backend, 'signInWithPassword');
+    const signUp = jest.spyOn(backend, 'signUp');
+    const reset = jest.spyOn(backend, 'requestPasswordReset');
+    const code = jest.spyOn(backend, 'submitSecondFactor');
+    const { result } = await renderAuth(backend);
+
+    const outcome = await act(() => result.current.signInWithPassword('  demo-2fa@example.com ', secondFactor.password));
+    if (outcome.status !== 'second-factor-required') throw new Error(`got ${outcome.status}`);
+    await act(() => result.current.submitSecondFactor(outcome.challengeId, ' 123456 '));
+    await act(() => result.current.signUp(' new@example.com ', 'abcdefgh'));
+    await act(() => result.current.requestPasswordReset(' demo@example.com '));
+
+    expect(signIn).toHaveBeenCalledWith('demo-2fa@example.com', secondFactor.password);
+    expect(code).toHaveBeenCalledWith(outcome.challengeId, '123456');
+    expect(signUp).toHaveBeenCalledWith('new@example.com', 'abcdefgh');
+    expect(reset).toHaveBeenCalledWith('demo@example.com');
+  });
+
+  it('logs what the backend threw, in development', async () => {
+    const backend = createTestBackend();
+    const error = new Error('DEVELOPER_ERROR');
+    jest.spyOn(backend, 'signInWithPassword').mockRejectedValue(error);
+    const { result } = await renderAuth(backend);
+    await act(() => result.current.signInWithPassword(plain.email, plain.password));
+    expect(warn).toHaveBeenCalledWith('[auth] signInWithPassword failed', error);
+  });
+});
+
 describe('Google', () => {
   it('reports cancelled without calling the backend when the person cancels', async () => {
     const backend = createTestBackend();
@@ -115,6 +155,26 @@ describe('Account Deletion and Sign-out', () => {
     await act(() => result.current.signInWithPassword(plain.email, plain.password));
     await act(() => result.current.signOut());
     expect(result.current.state.status).toBe('signed-out');
+  });
+
+  it('signs out of Google too, so the next person can pick another Google account', async () => {
+    const google: ProviderSignIn = Object.assign(jest.fn(async () => googleIdentity), {
+      signOut: jest.fn(async () => {}),
+    });
+    const { result } = await renderAuth(createTestBackend(), stubProviders({ google }));
+    await act(() => result.current.signInWithProvider('google'));
+    await act(() => result.current.signOut());
+    expect(google.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('signs out of Google after its Account is deleted', async () => {
+    const google: ProviderSignIn = Object.assign(jest.fn(async () => googleIdentity), {
+      signOut: jest.fn(async () => {}),
+    });
+    const { result } = await renderAuth(createTestBackend(), stubProviders({ google }));
+    await act(() => result.current.signInWithProvider('google'));
+    await act(() => result.current.deleteAccount());
+    expect(google.signOut).toHaveBeenCalledTimes(1);
   });
 
   it('reauthenticates a Google Account through the Google provider', async () => {

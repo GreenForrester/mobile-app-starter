@@ -15,38 +15,48 @@ export type ProviderIdentity = {
   email: string | null;
 };
 
-export type Unreachable = { status: 'unreachable' };
 export type SignedIn = { status: 'signed-in'; session: Session };
+export type SecondFactorRequired = { status: 'second-factor-required'; challengeId: string };
+// The service couldn't be reached at all (no network, timeout).
+export type Unreachable = { status: 'unreachable' };
+// The service refused because of too many attempts (Firebase too-many-requests, HTTP 429).
+export type RateLimited = { status: 'rate-limited' };
+type Problem = Unreachable | RateLimited;
 
 export type SignUpResult =
   | SignedIn
   | { status: 'confirmation-required' }
   | { status: 'email-in-use' }
   | { status: 'weak-password' }
-  | Unreachable;
+  | Problem;
 
 export type PasswordSignInResult =
   | SignedIn
-  | { status: 'second-factor-required'; challengeId: string }
+  | SecondFactorRequired
+  // The Account exists but its email isn't confirmed yet (Supabase's default).
+  | { status: 'confirmation-required' }
   | { status: 'wrong-credentials' }
-  | Unreachable;
+  | Problem;
 
-export type SecondFactorResult = SignedIn | { status: 'wrong-code' } | Unreachable;
+export type SecondFactorResult = SignedIn | { status: 'wrong-code' } | Problem;
 
-export type ProviderSignInResult = SignedIn | Unreachable;
+export type ProviderSignInResult = SignedIn | Problem;
 
-export type PasswordResetResult = { status: 'sent' } | Unreachable;
+export type PasswordResetResult = { status: 'sent' } | Problem;
 
 export type ReauthProof = { kind: 'password'; password: string } | { kind: 'provider'; identity: ProviderIdentity };
 
-export type ReauthResult = SignedIn | { status: 'wrong-credentials' } | Unreachable;
+// An Account with a Second Factor answers a challenge again (Firebase multi-factor-auth-required).
+export type ReauthResult = SignedIn | SecondFactorRequired | { status: 'wrong-credentials' } | Problem;
 
-export type AccountDeletionResult = { status: 'deleted' } | { status: 'recent-sign-in-required' } | Unreachable;
+export type AccountDeletionResult = { status: 'deleted' } | { status: 'recent-sign-in-required' } | Problem;
 
+// Emails and Second Factor codes arrive trimmed; how letter case is treated is up to the backend.
 export interface AuthBackend {
   restoreSession(): Promise<Session | null>;
   signUp(email: string, password: string): Promise<SignUpResult>;
   signInWithPassword(email: string, password: string): Promise<PasswordSignInResult>;
+  // Answers a challenge from Sign-in or from reauthenticate; either way a fresh session follows.
   submitSecondFactor(challengeId: string, code: string): Promise<SecondFactorResult>;
   signInWithProvider(identity: ProviderIdentity): Promise<ProviderSignInResult>;
   // Same answer whether or not an Account exists, so the screen never reveals who has one.

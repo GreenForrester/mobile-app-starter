@@ -49,8 +49,27 @@ describe('deriveIdentity', () => {
     });
   });
 
-  it.each(['com.my-company.app', 'fittrack', 'com.1abc.app'])('refuses the identifier %s', (id) => {
-    expect(() => deriveIdentity({ name: 'FitTrack', id })).toThrow(/at least two parts/);
+  // com.my_company.app: Expo's iOS bundle ID check rejects underscores.
+  it.each(['com.my-company.app', 'fittrack', 'com.1abc.app', 'com.my_company.app'])(
+    'refuses the identifier %s',
+    (id) => {
+      expect(() => deriveIdentity({ name: 'FitTrack', id })).toThrow(/at least two parts/);
+    },
+  );
+
+  // Android package names can't contain Java keywords; `expo run:android` fails on them.
+  it.each(['com.yourname.new', 'com.acme.default'])('refuses %s, which uses a reserved word', (id) => {
+    expect(() => deriveIdentity({ name: 'FitTrack', id })).toThrow(/reserved word/);
+  });
+
+  // The URL scheme comes from the slug and must start with a letter.
+  it('asks for a --slug when the name starts with a digit', () => {
+    expect(() => deriveIdentity({ name: '7 Minute Workout', id: 'com.yourname.workout' })).toThrow(
+      /start with a letter.*--slug/,
+    );
+    expect(
+      deriveIdentity({ name: '7 Minute Workout', id: 'com.yourname.workout', slug: 'seven-minute-workout' }).scheme,
+    ).toBe('sevenminuteworkout');
   });
 
   it('asks for --slug when the name has no usable characters', () => {
@@ -82,6 +101,9 @@ describe('createDerivedApp', () => {
       expect(fs.existsSync(path.join(target, gone))).toBe(false);
     }
     expect(read('README.md').split(/\r?\n/)[0]).toBe('# FitTrack');
+    // The how-to guide travels with every Derived App, and its README points to it.
+    expect(fs.existsSync(path.join(target, 'docs/building-on-the-starter.md'))).toBe(true);
+    expect(read('README.md')).toContain('docs/building-on-the-starter.md');
     expect(read('GLOSSARY.md').split(/\r?\n/)[0]).toBe('# FitTrack');
     expect(findStarterIdentity(target, starterIdentity)).toEqual([]);
     const commits = execFileSync('git', ['rev-list', '--count', 'HEAD'], { cwd: target, encoding: 'utf8' }).trim();

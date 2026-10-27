@@ -41,3 +41,13 @@ it('goes back to Sign-in after sending', async () => {
   await pressButton('Back to sign in');
   await waitFor(() => expect(app.getPathname()).toBe('/sign-in'));
 });
+
+it('sends one reset email when the keyboard submits and the button is tapped too', async () => {
+  const backend = createTestBackend();
+  const spy = jest.spyOn(backend, 'requestPasswordReset').mockReturnValue(new Promise(() => {}));
+  await renderApp({ backend, initialUrl: '/password-reset' });
+  await fireEvent.changeText(screen.getByLabelText('Email'), 'demo@example.com');
+  await fireEvent(screen.getByLabelText('Email'), 'submitEditing');
+  await pressButton('Send reset link');
+  expect(spy).toHaveBeenCalledTimes(1);
+});

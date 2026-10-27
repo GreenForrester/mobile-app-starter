@@ -6,23 +6,27 @@ import { useTheme } from '@/theme/ThemeProvider';
 type Variant = 'primary' | 'secondary' | 'danger' | 'link';
 
 // When onPress returns a promise, the button ignores further presses until it settles,
-// so a quick double tap sends one request.
+// so a quick double tap sends one request. `busy` covers work started elsewhere, such as a
+// form submitted from the keyboard (see useSubmit).
 export function Button({
   title,
   onPress,
   variant = 'primary',
   disabled = false,
+  busy: busyFromForm = false,
   testID,
 }: {
   title: string;
   onPress: () => void | Promise<unknown>;
   variant?: Variant;
   disabled?: boolean;
+  busy?: boolean;
   testID?: string;
 }) {
   const theme = useTheme();
-  const [busy, setBusy] = useState(false);
+  const [pressBusy, setBusy] = useState(false);
   const running = useRef(false);
+  const busy = busyFromForm || pressBusy;
 
   const colors = {
     primary: { background: theme.colors.primary, text: theme.colors.onPrimary, border: theme.colors.primary },
@@ -32,7 +36,7 @@ export function Button({
   }[variant];
 
   async function handlePress() {
-    if (running.current) return;
+    if (running.current || busyFromForm) return;
     const result = onPress();
     if (!(result instanceof Promise)) return;
     running.current = true;

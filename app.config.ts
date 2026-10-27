@@ -12,25 +12,20 @@ export type AppIdentity = {
 
 export type SignInMethodsConfig = { password: boolean; google: boolean; apple: boolean };
 
-// Sign-in Methods this app offers. A Derived App switches on Google or Apple here,
-// after adding its own keys to .env.local (see README: "Switching on Google or Apple").
+// Sign-in Methods this app offers. A Derived App switches on Google or Apple here, after
+// adding its own keys to .env.local (see docs/building-on-the-starter.md, "Switch on Google or Apple").
 export const signInMethods: SignInMethodsConfig = { password: true, google: false, apple: false };
-
-const GOOGLE_ENV = ['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'GOOGLE_IOS_URL_SCHEME'] as const;
 
 export function buildConfig(
   base: ExpoConfig,
   options: { identity: AppIdentity; signInMethods: SignInMethodsConfig; env: Record<string, string | undefined> },
 ): ExpoConfig {
   const { identity, signInMethods, env } = options;
+  // Needed only for Google on iOS; an Android-only app can leave it out.
+  const googleIosUrlScheme = signInMethods.google ? env.GOOGLE_IOS_URL_SCHEME : undefined;
 
-  if (signInMethods.google) {
-    const missing = GOOGLE_ENV.filter((name) => !env[name]);
-    if (missing.length > 0) {
-      throw new Error(
-        `Google sign-in is switched on in app.config.ts, but .env.local is missing: ${missing.join(', ')}`,
-      );
-    }
+  if (signInMethods.google && !env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+    throw new Error('Google sign-in is switched on in app.config.ts, but .env.local is missing: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
   }
 
   const plugins: ExpoConfig['plugins'] = [
@@ -50,8 +45,8 @@ export function buildConfig(
     ],
   ];
   if (signInMethods.apple) plugins.push('expo-apple-authentication');
-  if (signInMethods.google) {
-    plugins.push(['@react-native-google-signin/google-signin', { iosUrlScheme: env.GOOGLE_IOS_URL_SCHEME }]);
+  if (googleIosUrlScheme) {
+    plugins.push(['@react-native-google-signin/google-signin', { iosUrlScheme: googleIosUrlScheme }]);
   }
 
   return {
@@ -86,6 +81,10 @@ export function buildConfig(
       ...base.extra,
       signInMethods,
       googleWebClientId: env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? null,
+      // com.googleusercontent.apps.<id> is the reversed form of <id>.apps.googleusercontent.com.
+      googleIosClientId: googleIosUrlScheme
+        ? `${googleIosUrlScheme.replace('com.googleusercontent.apps.', '')}.apps.googleusercontent.com`
+        : null,
     },
   };
 }

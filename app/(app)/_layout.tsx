@@ -1,50 +1,24 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
 
-// The signed-in area. A Derived App adds its screens as more tabs or pushes them from Home.
-export default function AppLayout() {
+// Opening a pushed screen directly (for example from a deep link) still puts the tabs under it.
+export const unstable_settings = { anchor: '(tabs)' };
+
+// The signed-in area: the tabs, plus any screen a Derived App pushes on top of them. Every file
+// in app/(app)/ is reachable only while signed in.
+export default function SignedInLayout() {
   const theme = useTheme();
   return (
-    <Tabs
+    <Stack
       screenOptions={{
         headerStyle: { backgroundColor: theme.colors.surface },
         headerTintColor: theme.colors.text,
         headerTitleStyle: { fontFamily: theme.fonts.bold },
-        sceneStyle: { backgroundColor: theme.colors.background },
-        tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border },
-        tabBarActiveTintColor: theme.colors.link,
-        tabBarInactiveTintColor: theme.colors.textMuted,
-        tabBarLabelStyle: { fontFamily: theme.fonts.medium },
+        contentStyle: { backgroundColor: theme.colors.background },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ size, focused }) => (
-            <Ionicons
-              name={focused ? 'home' : 'home-outline'}
-              color={focused ? theme.colors.link : theme.colors.textMuted}
-              size={size}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: 'Account',
-          tabBarIcon: ({ size, focused }) => (
-            <Ionicons
-              name={focused ? 'person-circle' : 'person-circle-outline'}
-              color={focused ? theme.colors.link : theme.colors.textMuted}
-              size={size}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    </Stack>
   );
 }

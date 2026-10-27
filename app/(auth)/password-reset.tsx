@@ -2,13 +2,14 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { MESSAGES } from '@/auth/messages';
+import { MESSAGES, problemMessage } from '@/auth/messages';
 import { validateEmail } from '@/auth/validation';
 import { AppText } from '@/ui/AppText';
 import { Button } from '@/ui/Button';
 import { FormMessage } from '@/ui/FormMessage';
 import { Screen } from '@/ui/Screen';
 import { TextField } from '@/ui/TextField';
+import { useSubmit } from '@/ui/useSubmit';
 
 // The answer is the same whether or not an Account exists, so this screen never reveals who has one.
 export default function PasswordResetScreen() {
@@ -18,7 +19,7 @@ export default function PasswordResetScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
 
-  async function submit() {
+  const { submit, busy } = useSubmit(async () => {
     const invalid = validateEmail(email);
     setError(invalid);
     setMessage(null);
@@ -26,9 +27,11 @@ export default function PasswordResetScreen() {
 
     const result = await requestPasswordReset(email);
     setMessage(
-      result.status === 'sent' ? { tone: 'info', text: MESSAGES.resetSent } : { tone: 'error', text: MESSAGES.unreachable },
+      result.status === 'sent'
+        ? { tone: 'info', text: MESSAGES.resetSent }
+        : { tone: 'error', text: problemMessage(result) ?? MESSAGES.unreachable },
     );
-  }
+  });
 
   const backToSignIn = () => (router.canGoBack() ? router.back() : router.replace('/sign-in'));
 
@@ -48,7 +51,7 @@ export default function PasswordResetScreen() {
         textContentType="emailAddress"
         onSubmitEditing={() => void submit()}
       />
-      <Button title="Send reset link" onPress={submit} />
+      <Button title="Send reset link" onPress={submit} busy={busy} />
       <Button title="Back to sign in" variant="link" onPress={backToSignIn} />
     </Screen>
   );

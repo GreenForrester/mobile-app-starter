@@ -1,6 +1,14 @@
 import { MIN_PASSWORD_LENGTH } from '../password-rules';
 import type { KeyValueStore } from '../storage';
-import type { Account, AuthBackend, ProviderIdentity, Session, SignedIn, SignInMethod } from '../types';
+import type {
+  Account,
+  AuthBackend,
+  ProviderIdentity,
+  SecondFactorRequired,
+  Session,
+  SignedIn,
+  SignInMethod,
+} from '../types';
 import { DEMO_ACCOUNTS } from './demo-accounts';
 
 // How long a Sign-in counts as recent for Account Deletion.
@@ -70,6 +78,12 @@ export function createFakeAuthBackend(options: {
     return { status: 'signed-in', session: next };
   }
 
+  function challenge(account: StoredAccount): SecondFactorRequired {
+    const challengeId = newId('challenge');
+    challenges.set(challengeId, account.id);
+    return { status: 'second-factor-required', challengeId };
+  }
+
   async function currentSession(): Promise<Session | null> {
     const raw = await session.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -107,11 +121,7 @@ export function createFakeAuthBackend(options: {
       const normalized = normalizeEmail(email);
       const account = (await loadAccounts()).find((a) => a.method === 'password' && a.email === normalized);
       if (!account || account.password !== password) return { status: 'wrong-credentials' };
-      if (account.secondFactorCode) {
-        const challengeId = newId('challenge');
-        challenges.set(challengeId, account.id);
-        return { status: 'second-factor-required', challengeId };
-      }
+      if (account.secondFactorCode) return challenge(account);
       return startSession(account);
     },
 
@@ -153,6 +163,8 @@ export function createFakeAuthBackend(options: {
           ? account.method === 'password' && account.password === proof.password
           : matchesProvider(account, proof.identity));
       if (!account || !confirmed) return { status: 'wrong-credentials' };
+      // Like Firebase, an Account with a Second Factor must answer it again.
+      if (proof.kind === 'password' && account.secondFactorCode) return challenge(account);
       return startSession(account);
     },
 

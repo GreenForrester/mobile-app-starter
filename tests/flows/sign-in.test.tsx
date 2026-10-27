@@ -16,6 +16,10 @@ async function fillSignIn(email: string, password: string) {
 
 const pressButton = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 it('opens on the sign-in screen with the demo Accounts listed', async () => {
   const app = await renderApp();
   expect(app.getPathname()).toBe('/sign-in');
@@ -66,6 +70,7 @@ it('asks the 2FA demo Account for a Second Factor', async () => {
 
 it('says the server could not be reached when the backend throws', async () => {
   const backend = createTestBackend();
+  jest.spyOn(console, 'warn').mockImplementation(() => {}); // the dev log of the throw
   jest.spyOn(backend, 'signInWithPassword').mockRejectedValue(new Error('offline'));
   await renderApp({ backend });
   await fillSignIn(plain.email, plain.password);
@@ -109,4 +114,32 @@ it('stays on sign-in without an error when Google is cancelled', async () => {
   await pressButton('Continue with Google');
   expect(app.getPathname()).toBe('/sign-in');
   expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('sends one request when the keyboard submits and Sign in is tapped too', async () => {
+  const backend = createTestBackend();
+  const spy = jest.spyOn(backend, 'signInWithPassword').mockReturnValue(new Promise(() => {}));
+  await renderApp({ backend });
+  await fillSignIn(plain.email, plain.password);
+  await fireEvent(screen.getByLabelText('Password'), 'submitEditing');
+  await pressButton('Sign in');
+  expect(spy).toHaveBeenCalledTimes(1);
+});
+
+it('asks the person to confirm their email when the backend says it is not confirmed yet', async () => {
+  const backend = createTestBackend();
+  jest.spyOn(backend, 'signInWithPassword').mockResolvedValue({ status: 'confirmation-required' });
+  await renderApp({ backend });
+  await fillSignIn(plain.email, plain.password);
+  await pressButton('Sign in');
+  expect(await screen.findByText(MESSAGES.confirmationRequired)).toBeVisible();
+});
+
+it('says to wait when the backend reports too many attempts', async () => {
+  const backend = createTestBackend();
+  jest.spyOn(backend, 'signInWithPassword').mockResolvedValue({ status: 'rate-limited' });
+  await renderApp({ backend });
+  await fillSignIn(plain.email, plain.password);
+  await pressButton('Sign in');
+  expect(await screen.findByText(MESSAGES.rateLimited)).toBeVisible();
 });

@@ -19,8 +19,9 @@ import type {
 
 export type { EnabledSignInMethods } from './sign-in-methods';
 
-// Opens the native Google or Apple sheet. Resolves null when the person cancels.
-export type ProviderSignIn = () => Promise<ProviderIdentity | null>;
+// Opens the native Google or Apple sheet and resolves null when the person cancels. Its optional
+// signOut ends the provider's own session, so the next Sign-in can pick a different account.
+export type ProviderSignIn = { (): Promise<ProviderIdentity | null>; signOut?: () => Promise<void> };
 
 export type Cancelled = { status: 'cancelled' };
 
@@ -45,8 +46,13 @@ const SIGNED_OUT: AuthState = { status: 'signed-out' };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// The only way screens reach the Auth Backend. It turns results into a signed-in or
-// signed-out state, and turns anything the backend throws into "unreachable".
+// In development, show what actually went wrong; the person only sees "couldn't reach the server".
+function logFailure(action: string, error: unknown) {
+  if (__DEV__) console.warn(`[auth] ${action} failed`, error);
+}
+
+// The only way screens reach the Auth Backend. It trims emails and codes, turns results into a
+// signed-in or signed-out state, and turns anything the backend throws into "unreachable".
 export function AuthProvider(props: {
   backend: AuthBackend;
   providers: Record<'google' | 'apple', ProviderSignIn>;
@@ -61,7 +67,10 @@ export function AuthProvider(props: {
     let active = true;
     backend
       .restoreSession()
-      .catch(() => null)
+      .catch((error) => {
+        logFailure('restoreSession', error);
+        return null;
+      })
       .then((session) => {
         if (active) setState(session ? { status: 'signed-in', session } : SIGNED_OUT);
       });
@@ -71,12 +80,13 @@ export function AuthProvider(props: {
   }, [backend]);
 
   const value = useMemo<AuthContextValue>(() => {
-    async function attempt<T extends { status: string }>(run: () => Promise<T>): Promise<T | Unreachable> {
+    async function attempt<T extends { status: string }>(action: string, run: () => Promise<T>): Promise<T | Unreachable> {
       try {
         const result = await run();
         if (isSignedIn(result)) setState({ status: 'signed-in', session: result.session });
         return result;
-      } catch {
+      } catch (error) {
+        logFailure(action, error);
         return UNREACHABLE;
       }
     }
@@ -84,8 +94,21 @@ export function AuthProvider(props: {
     async function identityFrom(provider: 'google' | 'apple'): Promise<ProviderIdentity | Cancelled | Unreachable> {
       try {
         return (await providers[provider]()) ?? { status: 'cancelled' };
-      } catch {
+      } catch (error) {
+        logFailure(`${provider} sign-in`, error);
         return UNREACHABLE;
+      }
+    }
+
+    // After Sign-out or Account Deletion, also end the Google or Apple session.
+    async function signOutOfProvider() {
+      if (state.status !== 'signed-in') return;
+      const { method } = state.session.account;
+      if (method === 'password') return;
+      try {
+        await providers[method].signOut?.();
+      } catch (error) {
+        logFailure(`${method} sign-out`, error);
       }
     }
 
@@ -93,40 +116,47 @@ export function AuthProvider(props: {
       state,
       signInMethods,
       demoAccounts,
-      signUp: (email, password) => attempt(() => backend.signUp(email, password)),
-      signInWithPassword: (email, password) => attempt(() => backend.signInWithPassword(email, password)),
-      submitSecondFactor: (challengeId, code) => attempt(() => backend.submitSecondFactor(challengeId, code)),
-      requestPasswordReset: (email) => attempt(() => backend.requestPasswordReset(email)),
+      signUp: (email, password) => attempt('signUp', () => backend.signUp(email.trim(), password)),
+      signInWithPassword: (email, password) =>
+        attempt('signInWithPassword', () => backend.signInWithPassword(email.trim(), password)),
+      submitSecondFactor: (challengeId, code) =>
+        attempt('submitSecondFactor', () => backend.submitSecondFactor(challengeId, code.trim())),
+      requestPasswordReset: (email) => attempt('requestPasswordReset', () => backend.requestPasswordReset(email.trim())),
 
       async signInWithProvider(provider) {
         const identity = await identityFrom(provider);
         if ('status' in identity) return identity;
-        return attempt(() => backend.signInWithProvider(identity));
+        return attempt('signInWithProvider', () => backend.signInWithProvider(identity));
       },
 
       async reauthenticate(proof) {
         if (proof.kind === 'password') {
-          return attempt(() => backend.reauthenticate({ kind: 'password', password: proof.password }));
+          return attempt('reauthenticate', () => backend.reauthenticate({ kind: 'password', password: proof.password }));
         }
         const method = state.status === 'signed-in' ? state.session.account.method : 'password';
         if (method === 'password') return { status: 'wrong-credentials' };
         const identity = await identityFrom(method);
         if ('status' in identity) return identity;
-        return attempt(() => backend.reauthenticate({ kind: 'provider', identity }));
+        return attempt('reauthenticate', () => backend.reauthenticate({ kind: 'provider', identity }));
       },
 
       async deleteAccount() {
-        const result = await attempt(() => backend.deleteAccount());
-        if (result.status === 'deleted') setState(SIGNED_OUT);
+        const result = await attempt('deleteAccount', () => backend.deleteAccount());
+        if (result.status === 'deleted') {
+          await signOutOfProvider();
+          setState(SIGNED_OUT);
+        }
         return result;
       },
 
       async signOut() {
         try {
           await backend.signOut();
-        } catch {
+        } catch (error) {
           // Signed out on this phone either way; the backend session expires on its own.
+          logFailure('signOut', error);
         }
+        await signOutOfProvider();
         setState(SIGNED_OUT);
       },
     };

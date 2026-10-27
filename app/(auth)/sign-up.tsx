@@ -2,13 +2,14 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { MESSAGES } from '@/auth/messages';
+import { MESSAGES, problemMessage } from '@/auth/messages';
 import { MIN_PASSWORD_LENGTH } from '@/auth/password-rules';
 import { validateEmail, validateRequired } from '@/auth/validation';
 import { Button } from '@/ui/Button';
 import { FormMessage } from '@/ui/FormMessage';
 import { Screen } from '@/ui/Screen';
 import { TextField } from '@/ui/TextField';
+import { useSubmit } from '@/ui/useSubmit';
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
@@ -21,7 +22,7 @@ export default function SignUpScreen() {
   });
   const [message, setMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
 
-  async function submit() {
+  const { submit, busy } = useSubmit(async () => {
     // Only plainly missing input is caught here; the Auth Backend decides what's too weak.
     const next = { email: validateEmail(email), password: validateRequired(password, MESSAGES.passwordRequired) };
     setErrors(next);
@@ -32,9 +33,12 @@ export default function SignUpScreen() {
     if (result.status === 'email-in-use') setErrors({ email: MESSAGES.emailInUse, password: null });
     else if (result.status === 'weak-password') setErrors({ email: null, password: MESSAGES.weakPassword });
     else if (result.status === 'confirmation-required') setMessage({ tone: 'info', text: MESSAGES.confirmationRequired });
-    else if (result.status === 'unreachable') setMessage({ tone: 'error', text: MESSAGES.unreachable });
+    else {
+      const problem = problemMessage(result);
+      if (problem) setMessage({ tone: 'error', text: problem });
+    }
     // signed-in: the navigator switches to Home.
-  }
+  });
 
   const backToSignIn = () => (router.canGoBack() ? router.back() : router.replace('/sign-in'));
 
@@ -63,7 +67,7 @@ export default function SignUpScreen() {
         textContentType="newPassword"
         onSubmitEditing={() => void submit()}
       />
-      <Button title="Create account" onPress={submit} />
+      <Button title="Create account" onPress={submit} busy={busy} />
       <Button title="Back to sign in" variant="link" onPress={backToSignIn} />
     </Screen>
   );

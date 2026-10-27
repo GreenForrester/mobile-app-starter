@@ -134,6 +134,22 @@ describe('Account Deletion', () => {
     expect(await backend.deleteAccount()).toEqual({ status: 'deleted' });
   });
 
+  it('asks the 2FA Account for its code again before deleting', async () => {
+    const first = await backend.signInWithPassword(secondFactor.email, secondFactor.password);
+    if (first.status !== 'second-factor-required') throw new Error(`got ${first.status}`);
+    await backend.submitSecondFactor(first.challengeId, secondFactor.code);
+    clock += RECENT_SIGN_IN_WINDOW_MS + 1;
+    expect(await backend.deleteAccount()).toEqual({ status: 'recent-sign-in-required' });
+
+    const again = await backend.reauthenticate({ kind: 'password', password: secondFactor.password });
+    if (again.status !== 'second-factor-required') throw new Error(`got ${again.status}`);
+    expect(await backend.submitSecondFactor(again.challengeId, secondFactor.code)).toMatchObject({
+      status: 'signed-in',
+      session: { signedInAt: clock },
+    });
+    expect(await backend.deleteAccount()).toEqual({ status: 'deleted' });
+  });
+
   it('keeps the original Sign-in time across a restart', async () => {
     await signInPlain();
     clock += RECENT_SIGN_IN_WINDOW_MS + 1;
