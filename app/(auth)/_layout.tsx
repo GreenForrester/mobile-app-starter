@@ -20,6 +20,8 @@ export default function AuthLayout() {
     >
       <Stack.Screen name="sign-in" options={{ title: 'Sign in' }} />
       <Stack.Screen name="second-factor" options={{ title: 'Verification code' }} />
+      <Stack.Screen name="sign-up" options={{ title: 'Create an account' }} />
+      <Stack.Screen name="password-reset" options={{ title: 'Reset password' }} />
     </Stack>
   );
 }
