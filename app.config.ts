@@ -37,6 +37,7 @@ export function buildConfig(
     'expo-router',
     'expo-status-bar',
     'expo-secure-store',
+    'expo-font',
     [
       'expo-splash-screen',
       {
