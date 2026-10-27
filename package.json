@@ -8,7 +8,8 @@
     "ios": "expo run:ios",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "new-app": "node scripts/new-app.js"
+    "new-app": "node scripts/new-app.js",
+    "test:new-app": "jest --testPathIgnorePatterns=/node_modules/ --testMatch=**/scripts/new-app.e2e.test.js"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans": "^0.4.1",
