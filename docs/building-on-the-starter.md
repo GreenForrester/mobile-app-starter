@@ -89,6 +89,23 @@ These are inherited from the Starter until your app proves them:
 - **Google Sign-in** is built in and covered by automated tests with a stand-in, but has never run against Google for real.
 - **Real Auth Backends:** the seam has only ever run against the Fake Auth Backend.
 
+## Windows: native build fails with a long path
+
+If `npx expo run:android` fails with `ninja: error: mkdir(...): No such file or directory`, the native build's paths have passed Windows' 260-character limit. Verified fix:
+
+1. Keep the project in a short folder, such as `C:\dev\myapp`.
+2. Enable Windows long paths (`LongPathsEnabled` = 1; needs an administrator).
+3. In Android Studio, open SDK Manager → SDK Tools and install CMake 3.31 or newer. The default CMake 3.22 ships a ninja that can't use long paths.
+4. After the first `npx expo run:android` creates `android/`, add this line to `android/local.properties`, with your user name and CMake version:
+
+   ```properties
+   cmake.dir=C\:\\Users\\you\\AppData\\Local\\Android\\Sdk\\cmake\\3.31.6
+   ```
+
+5. Run `npx expo run:android` again.
+
+`android/` is generated and git-ignored, so repeat step 4 whenever you delete it.
+
 ## Tests
 
 ```sh

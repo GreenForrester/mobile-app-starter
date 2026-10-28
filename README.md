@@ -10,6 +10,7 @@ The project's vocabulary is defined in [`GLOSSARY.md`](GLOSSARY.md). The decisio
 - Android Studio with the Android SDK, plus an emulator or an Android phone with USB debugging on.
 - Set `ANDROID_HOME` (usually `%LOCALAPPDATA%\Android\Sdk`) and add `%ANDROID_HOME%\platform-tools` to `PATH`. Check that `adb --version` prints a version.
 - JDK 17, with `JAVA_HOME` pointing to it.
+- CMake 3.31 or newer (Android Studio → SDK Manager → SDK Tools), and a short project folder such as `C:\dev\myapp`. The native build otherwise fails on Windows' path-length limit; see "Windows: native build fails with a long path" in [`docs/building-on-the-starter.md`](docs/building-on-the-starter.md).
 - iOS builds need a Mac, or a cloud build service such as EAS Build plus a paid Apple Developer Program membership.
 
 ## Run on Android
