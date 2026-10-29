@@ -37,6 +37,7 @@ const EXCLUDED = [
   '.expo',
   'dist',
   'coverage',
+  'graphify-out',
   '.scratch',
   '.superpowers',
   path.join('docs', 'superpowers'),

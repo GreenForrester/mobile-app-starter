@@ -1,4 +1,5 @@
 # Managed by skills.ps1 - what this project uses from the library (type  kit/name)
+kit  graphify
 skill  mattpocock/codebase-design
 skill  mattpocock/domain-modeling
 skill  mattpocock/git-guardrails-claude-code

@@ -2,6 +2,10 @@
 
 This guide covers turning a copy of the Starter into your own app. Terms like Auth Backend, Sign-in Method and Reference Design are defined in [`GLOSSARY.md`](../GLOSSARY.md). The decisions behind the Starter are recorded in [`docs/adr/`](adr/).
 
+
+## Creating new app from the template
+npm run new-app -- --name "YourApp" --id com.yourname.yourapp
+
 ## Demo Accounts
 
 While the Fake Auth Backend is active, these Accounts work, and the sign-in screen lists them:

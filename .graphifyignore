@@ -1,0 +1,8 @@
+# Keep the knowledge graph about this app, not the agent tooling around it.
+# Same syntax as .gitignore; .gitignore entries are already excluded.
+
+# Claude Code skills, hooks and settings (third-party kit content)
+.claude/
+
+# App icons and splash images: no relationships to extract
+assets/
