@@ -95,20 +95,19 @@ These are inherited from the Starter until your app proves them:
 
 ## Windows: native build fails with a long path
 
-If `npx expo run:android` fails with `ninja: error: mkdir(...): No such file or directory`, the native build's paths have passed Windows' 260-character limit. Verified fix:
+If `npx expo run:android` fails with `ninja: error: mkdir(...): No such file or directory`, the native build's paths have passed Windows' 260-character limit. `setup-windows.cmd` and `run-android.cmd` apply this fix for you. By hand:
 
-1. Keep the project in a short folder, such as `C:\dev\myapp`.
-2. Enable Windows long paths (`LongPathsEnabled` = 1; needs an administrator).
-3. In Android Studio, open SDK Manager → SDK Tools and install CMake 3.31 or newer. The default CMake 3.22 ships a ninja that can't use long paths.
-4. After the first `npx expo run:android` creates `android/`, add this line to `android/local.properties`, with your user name and CMake version:
+1. Enable Windows long paths (`LongPathsEnabled` = 1; needs an administrator).
+2. Install CMake 3.31 or newer: Android Studio → SDK Manager → SDK Tools, or `sdkmanager "cmake;3.31.6"`. The default CMake 3.22 ships a ninja that can't use long paths.
+3. Generate `android/` with `npx expo prebuild --platform android`, then add this line to `android/local.properties`, with your user name and CMake version. The backslashes are doubled on purpose:
 
    ```properties
    cmake.dir=C\:\\Users\\you\\AppData\\Local\\Android\\Sdk\\cmake\\3.31.6
    ```
 
-5. Run `npx expo run:android` again.
+4. Run `npx expo run:android`.
 
-`android/` is generated and git-ignored, so repeat step 4 whenever you delete it.
+A short project folder isn't needed once both are in place: the build passed in a 55-character project path. `android/` is generated and git-ignored, so repeat step 3 whenever you delete it (`run-android.cmd` does it on every run).
 
 ## Tests
 

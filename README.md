@@ -182,7 +182,12 @@ mobile-app-starter/
 │   ├── ui/                           # AppText · Button · TextField · FormMessage · Screen · useSubmit
 │   └── test-utils/                   # renderApp, test backend, raw-style scanner
 ├── tests/flows/                      # End-to-end flows through the real routes
-├── scripts/new-app.js                # The new-app command
+├── scripts/
+│   ├── new-app.js                    # The new-app command
+│   ├── setup-windows.ps1             # What setup-windows.cmd runs
+│   └── run-android.js                # What run-android.cmd runs
+├── setup-windows.cmd                 # Windows: install everything the emulator run needs
+├── run-android.cmd                   # Windows: start the emulator, build and open the app
 ├── assets/                           # App icon, adaptive icon layers, splash
 ├── docs/
 │   ├── adr/                          # 0001 Expo + generated native folders · 0002 one Theme
@@ -200,20 +205,43 @@ mobile-app-starter/
 
 ## 🚀 Getting Started
 
+### On Windows: two commands
+
+From the project folder, in Command Prompt or PowerShell:
+
+```sh
+setup-windows.cmd     # once per machine
+run-android.cmd       # every time you want the app running
+```
+
+* **`setup-windows.cmd`** installs everything below that's missing: Node.js, git and JDK 17 with
+  winget, then the Android SDK (no Android Studio needed), the emulator, CMake 3.31 and a virtual
+  device. It turns on Windows long paths and the emulator's hardware acceleration after one
+  administrator prompt, sets `ANDROID_HOME` and `JAVA_HOME`, and runs `npm install`. It's safe to
+  run again. Open a new terminal afterwards if it installed anything.
+* **`run-android.cmd`** checks the machine, runs `npm install` when `package-lock.json` changed,
+  starts the emulator when no device is attached, generates `android/` with the long-path fix
+  applied, then builds, installs and opens the app, and leaves Metro running for live reloads.
+  `--check` only lists what's missing, `--clean` regenerates `android/` (after changing
+  `app.config.ts`), and `--avd <name>` picks the emulator.
+* **"System UI isn't responding"** on a freshly started emulator during the first build is the
+  emulator struggling under the build's load, not the app. Tap **Wait**.
+
 ### Prerequisites
 
-* **Node.js LTS** and **git**.
-* **Android Studio** with the Android SDK, plus an emulator or an Android phone with USB debugging on.
-* `ANDROID_HOME` set (usually `%LOCALAPPDATA%\Android\Sdk`) and `%ANDROID_HOME%\platform-tools` on
-  `PATH`. Check that `adb --version` prints a version.
+* **Node.js** `^22.13`, `^24.3` or `>=26`, and **git**.
+* **The Android SDK**, from Android Studio or the command-line tools, plus an emulator or an
+  Android phone with USB debugging on.
+* `ANDROID_HOME` set (usually `%LOCALAPPDATA%\Android\Sdk`). Add `%ANDROID_HOME%\platform-tools` to
+  `PATH` if you want to type `adb` yourself.
 * **JDK 17**, with `JAVA_HOME` pointing to it.
-* **Windows only:** CMake 3.31 or newer (Android Studio → SDK Manager → SDK Tools) and a short
-  project folder such as `C:\dev\myapp`. See [the long-path fix](docs/building-on-the-starter.md#windows-native-build-fails-with-a-long-path).
+* **Windows only:** CMake 3.31 or newer from the SDK, and Windows long paths turned on. See
+  [the long-path fix](docs/building-on-the-starter.md#windows-native-build-fails-with-a-long-path).
 * **iOS** needs a Mac, or a cloud build service such as EAS Build plus a paid Apple Developer
   Program membership.
 * No backend, database or API key. The Fake Auth Backend runs on the phone.
 
-### Run on Android
+### Run on Android by hand
 
 1. **Install dependencies:**
    ```sh
@@ -236,8 +264,8 @@ mobile-app-starter/
 4. **Sign in** with `demo@example.com` / `Password123!`. The sign-in screen lists both demo Accounts.
 
 > **Native build fails on Windows with `ninja: error: mkdir(...)`?** The build paths passed
-> Windows' 260-character limit. Move the project to a short folder, install CMake 3.31+, and point
-> `android/local.properties` at it. The steps are in
+> Windows' 260-character limit. `run-android.cmd` applies the fix for you; by hand, install CMake
+> 3.31+, turn on long paths, and point `android/local.properties` at that CMake. The steps are in
 > [building-on-the-starter.md](docs/building-on-the-starter.md#windows-native-build-fails-with-a-long-path).
 
 ### Create a Derived App
