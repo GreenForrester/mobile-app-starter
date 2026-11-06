@@ -21,9 +21,7 @@ into a **Derived App** with its own App Identity and a fresh git history.
 
 ## 🎬 Demo
 
-[![Mobile App Starter demo video (coming soon)](https://placehold.co/1280x720/0F172A/F8FAFC?text=Demo+video+coming+soon)](#-demo)
-
-*Placeholder: the demo video link will go here.*
+![Mobile App Starter: the Sign-in screen with the demo Accounts listed, and the signed-in Home screen](docs/images/demo.webp)
 
 See [GLOSSARY.md](GLOSSARY.md) for the project's vocabulary,
 [docs/adr/](docs/adr/) for the two architecture decisions,
